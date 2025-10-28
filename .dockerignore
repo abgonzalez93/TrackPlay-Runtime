@@ -1,0 +1,23 @@
+# Node modules (will be installed inside the container)
+node_modules/
+
+# Git
+.git
+.gitignore
+
+# Build output
+dist/
+*.tsbuildinfo
+*.tgz
+
+# Editor / IDE config
+.vscode/
+.idea/
+
+# Documentation
+README.md
+LICENSE
+
+# Docker metadata
+Dockerfile
+.dockerignore
