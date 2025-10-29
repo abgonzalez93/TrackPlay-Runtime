@@ -103,7 +103,7 @@ const buildDependencies = <
  */
 interface HttpServerOptions<Controllers> {
   /** Optional route registration function. */
-  routes?: (app: Express, deps: { controllers: Controllers }) => void
+  routes?: (app: Express, controllers: Controllers) => void
   /** The controller instances to inject into the routes. */
   controllers: Controllers
   /** Initialized i18n instance. */
@@ -139,7 +139,7 @@ const createHttpServer = <Controllers extends Record<string, unknown>>(
   const app = express()
 
   applyMiddlewares(app, middlewares)
-  if (routes) routes(app, { controllers })
+  if (routes) routes(app, controllers)
 
   app.use(createNotFoundHandler())
   app.use(createErrorHandler(i18n, logger, middlewares.errorHandler))
@@ -174,7 +174,7 @@ export interface BootstrapConfig<
   /** Dependency container factory definitions. */
   container: DependencyFactories<L, EnvSchema<E>, SecretSchema<S>>
   /** Route registration function. */
-  routes: (app: Express, container: { controllers: L['controllers'] }) => void
+  routes: (app: Express, controllers: L['controllers']) => void
   /** Global middleware configuration. */
   middlewareOptions?: MiddlewareOptions
 }

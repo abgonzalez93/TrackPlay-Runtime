@@ -2,7 +2,7 @@
   "type": "module",
   "name": "@trackplay/runtime",
   "author": "Antonio Bueno Gonzalez",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "main": "./dist/index.js",
   "imports": {
@@ -43,7 +43,7 @@
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
-    "@types/node": "^24.9.1",
+    "@types/node": "^24.9.2",
     "eslint": "^9.38.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
@@ -53,5 +53,5 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.2"
   },
-  "packageManager": "pnpm@10.19.0"
+  "packageManager": "pnpm@10.20.0"
 }
