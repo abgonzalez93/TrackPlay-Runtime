@@ -33,8 +33,8 @@ export { registerRoute } from '#routes/registerRoute'
 export { bootstrap } from '#runtime/bootstrap'
 
 // --- Types ---
+export { type BuildContext } from '#types/container/BuildContext'
 export { type DependencyFactories } from '#types/container/DependencyFactories'
 export { type DependencyLayers } from '#types/container/DependencyLayers'
-export { type EnvSecretsBundle } from '#types/container/EnvSecretsBundle'
 export { type ErrorHandlerOptions } from '#types/middlewares/ErrorHandlerOptions'
 export { type MiddlewareOptions } from '#types/middlewares/MiddlewareOptions'

@@ -2,7 +2,7 @@
   "type": "module",
   "name": "@trackplay/runtime",
   "author": "Antonio Bueno Gonzalez",
-  "version": "0.1.2",
+  "version": "0.1.6",
   "private": false,
   "main": "./dist/index.js",
   "imports": {
@@ -31,11 +31,11 @@
     "release": "pnpm build && rm -f trackplay-runtime-*.tgz && pnpm pack && pnpm publish --tag latest --no-git-checks"
   },
   "dependencies": {
-    "@trackplay/core": "^0.5.3",
+    "@trackplay/core": "^0.5.5",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "express-rate-limit": "^8.1.0",
+    "express-rate-limit": "^8.2.0",
     "helmet": "^8.1.0"
   },
   "devDependencies": {

@@ -6,54 +6,88 @@ import express, { type Express } from 'express'
 import { applyMiddlewares } from '#middlewares/applyMiddlewares'
 import { createErrorHandler } from '#middlewares/createErrorHandler'
 import { createNotFoundHandler } from '#middlewares/createNotFoundHandler'
+import type { BuildContext } from '#types/container/BuildContext'
 import { type DependencyFactories } from '#types/container/DependencyFactories'
 import { type DependencyLayers } from '#types/container/DependencyLayers'
-import { type EnvSecretsBundle } from '#types/container/EnvSecretsBundle'
 import { type MiddlewareOptions } from '#types/middlewares/MiddlewareOptions'
 
 const path = getTranslationPath(import.meta.url)
 
 /**
- * Describes the full runtime configuration object returned by {@link prepareRuntime}.
- * Includes environment variables, Docker secrets, and computed runtime options.
+ * **SchemaOutput**
  *
- * @template EnvRawValue - The validated environment schema output.
- * @template SecretRawValue - The validated secret schema output.
+ * Infers the output type of a configuration schema, or returns an empty object
+ * (`Record<string, never>`) when the schema is undefined.
+ *
+ * @template T - The schema type or `undefined`.
  */
-interface RuntimeConfig<EnvRawValue extends Record<string, unknown>, SecretRawValue extends Record<string, unknown>>
-  extends EnvSecretsBundle<EnvRawValue, SecretRawValue> {
-  /** Whether the current runtime is in development mode. */
+export type SchemaOutput<T extends ConfigSchema | undefined> = T extends ConfigSchema
+  ? InferConfig<T>
+  : Record<string, never>
+
+/**
+ * **EnvValues**
+ *
+ * Represents the complete environment configuration validated at runtime.
+ * Always includes the {@link BaseServerEnvSchema}, optionally extended with
+ * a user-provided schema.
+ *
+ * @template T - Custom environment schema type.
+ */
+type EnvValues<T extends ConfigSchema | undefined> = Readonly<InferConfig<typeof BaseServerEnvSchema> & SchemaOutput<T>>
+
+/**
+ * **SecretValues**
+ *
+ * Represents the validated runtime secrets configuration, derived only
+ * from the user-provided schema (if any).
+ *
+ * @template T - Custom secrets schema type.
+ */
+type SecretValues<T extends ConfigSchema | undefined> = Readonly<SchemaOutput<T>>
+
+/**
+ * **RuntimeConfig**
+ *
+ * Represents the complete configuration context produced by {@link prepareRuntime}.
+ * It merges validated environment variables, runtime secrets, and computed
+ * runtime parameters such as CORS origins and server connection settings.
+ *
+ * @template EnvValues - Type of the validated environment variables.
+ * @template SecretValues - Type of the validated secret variables.
+ */
+interface RuntimeConfig<
+  EnvValues extends Record<string, unknown> = Record<string, never>,
+  SecretValues extends Record<string, unknown> = Record<string, never>,
+> {
+  env: EnvValues
+  secrets: SecretValues
   isDevelopment: boolean
-  /** List of allowed CORS origins, parsed from the env variable. */
   corsOrigins: string[]
-  /** Core server connection settings (protocol, host, port). */
   serverOptions: BaseURLOptions
 }
 
-type BaseServerEnv = InferConfig<typeof BaseServerEnvSchema>
-type EnvSchema<T extends ConfigSchema | undefined> = Readonly<BaseServerEnv & SchemaOutput<T>>
-export type SchemaOutput<T> = T extends ConfigSchema ? InferConfig<T> : Record<string, never>
-type SecretSchema<T extends ConfigSchema | undefined> = Readonly<SchemaOutput<T>>
-
 /**
- * Prepares the runtime environment by validating env variables and secrets,
- * merging the base server schema with custom schemas, and deriving
- * server-related options such as protocol, CORS, and host details.
+ * **prepareRuntime**
  *
- * @template E - Optional Zod schema for environment variables.
- * @template S - Optional Zod schema for secrets.
- * @param {E} [envSchema] - Custom Zod schema for environment variables.
- * @param {S} [secretSchema] - Custom Zod schema for secrets.
- * @returns {Promise<RuntimeConfig<EnvSchema<E>, SecretSchema<S>>>}
- * The fully prepared runtime configuration.
+ * Initializes the runtime configuration by:
+ * - Validating environment variables and secrets.
+ * - Merging the base server schema with any custom schemas.
+ * - Deriving runtime options such as protocol, host, port, and CORS origins.
+ *
+ * @template EnvConfig - Optional Zod schema defining environment variables.
+ * @template SecretConfig - Optional Zod schema defining runtime secrets.
+ * @param envSchema - Custom Zod schema for environment variables.
+ * @param secretSchema - Custom Zod schema for runtime secrets.
+ * @returns A promise resolving to the fully prepared {@link RuntimeConfig}.
  */
-const prepareRuntime = async <E extends ConfigSchema | undefined, S extends ConfigSchema | undefined>(
-  envSchema?: E,
-  secretSchema?: S,
-): Promise<RuntimeConfig<EnvSchema<E>, SecretSchema<S>>> => {
+const prepareRuntime = async <EnvConfig extends ConfigSchema | undefined, SecretConfig extends ConfigSchema | undefined>(
+  envSchema?: EnvConfig,
+  secretSchema?: SecretConfig,
+): Promise<RuntimeConfig<EnvValues<EnvConfig>, SecretValues<SecretConfig>>> => {
   const mixedEnvSchema = envSchema ? BaseServerEnvSchema.extend(envSchema.shape) : BaseServerEnvSchema
-  const env = getServerEnv(mixedEnvSchema) as EnvSchema<E>
-  const secrets = (secretSchema ? getSecrets(secretSchema) : {}) as SecretSchema<S>
+  const env = getServerEnv(mixedEnvSchema) as EnvValues<EnvConfig>
+  const secrets = (secretSchema ? getSecrets(secretSchema) : {}) as SecretValues<SecretConfig>
 
   const isDevelopment = env.NODE_ENV === 'development'
 
@@ -71,70 +105,74 @@ const prepareRuntime = async <E extends ConfigSchema | undefined, S extends Conf
 }
 
 /**
- * Builds the dependency graph defined by the service container.
- * The build order is deterministic: Adapters → Services → UseCases → Controllers.
+ * **buildDependencies**
  *
- * @template L - Dependency layer type definition.
- * @template E - Environment schema type.
- * @template S - Secret schema type.
- * @param {DependencyFactories<L, E, S>} factories - Factory functions for each layer.
- * @param {EnvSecretsBundle<E, S>} ctx - Context containing environment and secret data.
- * @returns {L} Fully constructed dependency graph.
+ * Constructs the dependency graph following the canonical layer order:
+ * `Adapters → Services → UseCases → Controllers`.
+ *
+ * Each layer is initialized using the output of the previous one, ensuring
+ * a strict unidirectional dependency flow.
+ *
+ * @template Layers - Structure of the dependency layers.
+ * @template EnvValues - Type of the validated environment configuration.
+ * @template SecretValues - Type of the validated secrets configuration.
+ * @param factories - Factory functions responsible for constructing each layer.
+ * @param ctx - Context object containing validated env and secrets.
+ * @returns The fully constructed dependency graph.
  */
 const buildDependencies = <
-  L extends DependencyLayers,
-  E extends Record<string, unknown>,
-  S extends Record<string, unknown>,
+  Layers extends DependencyLayers,
+  EnvValues extends Record<string, unknown> = Record<string, never>,
+  SecretValues extends Record<string, unknown> = Record<string, never>,
 >(
-  factories: DependencyFactories<L, E, S>,
-  ctx: EnvSecretsBundle<E, S>,
-): L => {
+  factories: DependencyFactories<Layers, EnvValues, SecretValues>,
+  ctx: BuildContext<EnvValues, SecretValues>,
+): Layers => {
   const adapters = factories.adapters(ctx)
   const services = factories.services({ adapters })
   const useCases = factories.useCases({ services })
   const controllers = factories.controllers({ useCases })
-  return { adapters, services, useCases, controllers } as L
+  return { adapters, services, useCases, controllers } as Layers
 }
 
 /**
- * Options for configuring the Express HTTP server.
+ * **HttpServerOptions**
  *
- * @template Controllers - Type of controller layer.
+ * Configuration options for creating and initializing the HTTP server.
+ *
+ * @template Controllers - Type of the controller layer.
  */
-interface HttpServerOptions<Controllers> {
-  /** Optional route registration function. */
+interface HttpServerOptions<Controllers extends object> {
   routes?: (app: Express, controllers: Controllers) => void
-  /** The controller instances to inject into the routes. */
   controllers: Controllers
-  /** Initialized i18n instance. */
   i18n: i18n
-  /** Application logger. */
   logger: Logger
-  /** Optional middleware configuration. */
   middlewares?: Partial<MiddlewareOptions>
 }
 
 /**
- * Represents a running HTTP server instance.
+ * **HttpServerInstance**
+ *
+ * Represents a configured Express HTTP server.
  */
 interface HttpServerInstance {
-  /** Express application instance. */
   app: Express
-  /** Starts the server with the given options. */
   start: (serverOptions: BaseURLOptions) => void
 }
 
 /**
- * Creates and configures an Express HTTP server with predefined
- * middleware, error handling, and route registration.
+ * **createHttpServer**
  *
- * @template Controllers - Type of controller layer.
- * @param {HttpServerOptions<Controllers>} options - HTTP server setup options.
- * @returns {HttpServerInstance} Configured HTTP server.
+ * Creates and configures an Express server instance preloaded with:
+ * - Application-level middlewares.
+ * - Optional route registration.
+ * - Standardized 404 and error handling.
+ *
+ * @template Controllers - Type of the controller layer.
+ * @param options - Configuration options for the HTTP server.
+ * @returns The configured HTTP server ready to start.
  */
-const createHttpServer = <Controllers extends Record<string, unknown>>(
-  options: HttpServerOptions<Controllers>,
-): HttpServerInstance => {
+const createHttpServer = <Controllers extends object>(options: HttpServerOptions<Controllers>): HttpServerInstance => {
   const { routes, controllers, i18n, logger, middlewares = {} } = options
   const app = express()
 
@@ -154,81 +192,79 @@ const createHttpServer = <Controllers extends Record<string, unknown>>(
 }
 
 /**
- * Configuration options for {@link bootstrap}.
+ * **BootstrapConfig**
  *
- * @template L - Dependency layers type.
- * @template E - Environment schema type.
- * @template S - Secret schema type.
+ * Defines the configuration required by the {@link bootstrap} function.
+ * Specifies how the service environment, container, and routes are initialized.
+ *
+ * @template Layers - Dependency layer structure.
+ * @template EnvConfig - Optional environment schema.
+ * @template SecretConfig - Optional secrets schema.
  */
 export interface BootstrapConfig<
-  L extends DependencyLayers,
-  E extends ConfigSchema | undefined = undefined,
-  S extends ConfigSchema | undefined = undefined,
+  Layers extends DependencyLayers,
+  EnvConfig extends ConfigSchema | undefined = undefined,
+  SecretConfig extends ConfigSchema | undefined = undefined,
 > {
-  /** Name of the service, used in logging and diagnostics. */
   serviceName: string
-  /** Optional Zod schema for environment variables. */
-  envSchema?: E
-  /** Optional Zod schema for Docker secrets. */
-  secretSchema?: S
-  /** Dependency container factory definitions. */
-  container: DependencyFactories<L, EnvSchema<E>, SecretSchema<S>>
-  /** Route registration function. */
-  routes: (app: Express, controllers: L['controllers']) => void
-  /** Global middleware configuration. */
+  container: DependencyFactories<Layers, EnvValues<EnvConfig>, SecretValues<SecretConfig>>
+  routes: (app: Express, controllers: Layers['controllers']) => void
+  envSchema?: EnvConfig
+  secretSchema?: SecretConfig
   middlewareOptions?: MiddlewareOptions
 }
 
 /**
- * Represents a fully bootstrapped TrackPlay service runtime.
+ * **ServiceRuntime**
  *
- * @template L - Dependency layer type definition.
- * @template E - Environment schema type.
- * @template S - Secret schema type.
+ * Represents the final runtime state of a fully bootstrapped TrackPlay service.
+ * Includes the Express instance, logger, i18n system, dependency container,
+ * and validated configuration.
+ *
+ * @template Layers - Dependency layer structure.
+ * @template EnvValues - Type of validated environment configuration.
+ * @template SecretValues - Type of validated secrets configuration.
  */
 export interface ServiceRuntime<
-  L extends DependencyLayers,
-  E extends Record<string, unknown> = Record<string, unknown>,
-  S extends Record<string, unknown> = Record<string, unknown>,
-> extends EnvSecretsBundle<E, S> {
-  /** Express application instance. */
+  Layers extends DependencyLayers,
+  EnvValues extends Record<string, unknown> = Record<string, never>,
+  SecretValues extends Record<string, unknown> = Record<string, never>,
+> {
   app: Express
-  /** Starts the service. */
   start: () => void
-  /** Logger instance. */
   logger: Logger
-  /** i18n instance. */
   i18n: i18n
-  /** Dependency container. */
-  container: L
-  /** Whether the runtime is in development mode. */
+  env: EnvValues
+  secrets: SecretValues
+  container: Layers
   isDevelopment: boolean
 }
 
 /**
- * Initializes and starts a TrackPlay service.
+ * **bootstrap**
  *
- * Performs the following:
+ * Entry point to initialize and start a TrackPlay service.
+ *
+ * Performs the following lifecycle steps:
  * 1. Validates environment variables and secrets.
- * 2. Initializes i18n and logger.
- * 3. Builds the dependency container.
+ * 2. Initializes the logger and i18n subsystems.
+ * 3. Builds the dependency container (Adapters → Services → UseCases → Controllers).
  * 4. Configures Express with routes and middleware.
- * 5. Returns a fully initialized runtime ready to start.
+ * 5. Returns a fully initialized runtime object ready to start.
  *
- * @template L - Dependency layer type definition.
- * @template E - Optional environment schema type.
- * @template S - Optional secret schema type.
- * @param {BootstrapConfig<L, E, S>} options - Bootstrap configuration.
- * @returns {Promise<ServiceRuntime<L, EnvSchema<E>, SecretSchema<S>>>}
- * The fully bootstrapped service runtime.
+ * @template Layers - Dependency layer structure.
+ * @template EnvConfig - Optional environment schema.
+ * @template SecretConfig - Optional secrets schema.
+ * @param options - Configuration for bootstrapping the service.
+ * @returns A promise resolving to the complete {@link ServiceRuntime}.
  */
 export const bootstrap = async <
-  L extends DependencyLayers,
-  E extends ConfigSchema | undefined = undefined,
-  S extends ConfigSchema | undefined = undefined,
+  Layers extends DependencyLayers,
+  EnvConfig extends ConfigSchema | undefined = undefined,
+  SecretConfig extends ConfigSchema | undefined = undefined,
 >(
-  options: BootstrapConfig<L, E, S>,
-): Promise<ServiceRuntime<L, EnvSchema<E>, SecretSchema<S>>> => {
+  options: BootstrapConfig<Layers, EnvConfig, SecretConfig>,
+): Promise<ServiceRuntime<Layers, EnvValues<EnvConfig>, SecretValues<SecretConfig>>> => {
   const { serviceName, envSchema, secretSchema, container, routes, middlewareOptions } = options
 
   const logger = createLogger({ label: serviceName })

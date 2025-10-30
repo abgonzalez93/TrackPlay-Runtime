@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@trackplay/core':
-        specifier: ^0.5.3
-        version: 0.5.3(typescript@5.9.3)
+        specifier: ^0.5.5
+        version: 0.5.5(typescript@5.9.3)
       compression:
         specifier: ^1.8.1
         version: 1.8.1
@@ -21,8 +21,8 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0
       express-rate-limit:
-        specifier: ^8.1.0
-        version: 8.1.0(express@5.1.0)
+        specifier: ^8.2.0
+        version: 8.2.0(express@5.1.0)
       helmet:
         specifier: ^8.1.0
         version: 8.1.0
@@ -184,8 +184,8 @@ packages:
   '@so-ric/colorspace@1.1.6':
     resolution: {integrity: sha512-/KiKkpHNOBgkFJwu9sh48LkHSMYGyuTcSFK/qMBdnOAlrRJzRSXAOFB5qwzaVQuDl8wAvHVMkaASQDReTahxuw==}
 
-  '@trackplay/core@0.5.3':
-    resolution: {integrity: sha512-LN90FsAqGS0T2XT0uiNQZeb/RyGV/w8hddrUlHHpggoZnpAT52QBqGPcnEfu8oCyjJuPA+h32T7tlpMvG/VfOA==, tarball: https://npm.pkg.github.com/download/@trackplay/core/0.5.3/6f0ce69b21cfbb10df15d76c484af2f79ddadb5d}
+  '@trackplay/core@0.5.5':
+    resolution: {integrity: sha512-XQIPhzhq6Ff8MPVXro/rz0IJNDGvHB5i+eq5gBHzRrkSlJQfs9ioYyO8AXTcGuJa4/nb/yZzSYTIq76KitBmbQ==, tarball: https://npm.pkg.github.com/download/@trackplay/core/0.5.5/6ac2addf0f6b3b51fddb98947bbd1c626502d962}
 
   '@types/body-parser@1.19.6':
     resolution: {integrity: sha512-HLFeCYgz89uk22N5Qg3dvGvsv46B8GLvKKo1zKG4NybA8U2DiEO3w9lqGg29t/tfLRJpJ6iQxnVw4OnB7MoM9g==}
@@ -667,8 +667,8 @@ packages:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
 
-  express-rate-limit@8.1.0:
-    resolution: {integrity: sha512-4nLnATuKupnmwqiJc27b4dCFmB/T60ExgmtDD7waf4LdrbJ8CPZzZRHYErDYNhoz+ql8fUdYwM/opf90PoPAQA==}
+  express-rate-limit@8.2.0:
+    resolution: {integrity: sha512-zDLb8RsXoA09dui1mvm/bAqSYeUh/bj3+fcDeiNBebSbSjl9IEK5mbCSYSRk52Lrco9sj9Xjuzkot3TXuXEw0A==}
     engines: {node: '>= 16'}
     peerDependencies:
       express: '>= 4.11'
@@ -1603,7 +1603,7 @@ snapshots:
       color: 5.0.2
       text-hex: 1.0.0
 
-  '@trackplay/core@0.5.3(typescript@5.9.3)':
+  '@trackplay/core@0.5.5(typescript@5.9.3)':
     dependencies:
       i18next: 25.6.0(typescript@5.9.3)
       jose: 6.1.0
@@ -2247,7 +2247,7 @@ snapshots:
 
   etag@1.8.1: {}
 
-  express-rate-limit@8.1.0(express@5.1.0):
+  express-rate-limit@8.2.0(express@5.1.0):
     dependencies:
       express: 5.1.0
       ip-address: 10.0.1
