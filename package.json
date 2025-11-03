@@ -31,24 +31,24 @@
     "release": "pnpm build && rm -f trackplay-runtime-*.tgz && pnpm pack && pnpm publish --tag latest --no-git-checks"
   },
   "dependencies": {
-    "@trackplay/core": "^0.5.5",
+    "@trackplay/core": "^0.5.6",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "express-rate-limit": "^8.2.0",
+    "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.38.0",
+    "@eslint/js": "^9.39.0",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
-    "@types/node": "^24.9.2",
-    "eslint": "^9.38.0",
+    "@types/node": "^24.10.0",
+    "eslint": "^9.39.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-prettier": "^5.5.4",
-    "globals": "^16.4.0",
+    "globals": "^16.5.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.2"
