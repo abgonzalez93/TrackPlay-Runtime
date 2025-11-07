@@ -13,9 +13,9 @@ El paquete incluye:
 ### ✅ Middlewares
 
 - Middlewares genéricos para Express:
-  - `applyMiddlewares`: aplica múltiples middlewares de forma declarativa..
-  - `createErrorHandler`: gestiona errores de forma centralizada y traducible.
-  - `createNotFoundHandler`: maneja rutas inexistentes con respuestas estandarizadas.
+  - `http.middleware.ts`: aplica múltiples middlewares de forma declarativa..
+  - `error.middleware.ts`: gestiona errores de forma centralizada y traducible.
+  - `notFound.middleware.ts`: maneja rutas inexistentes con respuestas estandarizadas.
 - Totalmente configurables mediante las opciones tipadas de `MiddlewareOptions`.
 
 ### ✅ Routes
@@ -26,7 +26,7 @@ El paquete incluye:
 
 ### ✅ Runtime
 
-- `bootstrap.ts` actúa como punto de entrada unificado para inicializar cualquier microservicio de TrackPlay.
+- `bootstrap.runtime.ts` actúa como punto de entrada unificado para inicializar cualquier microservicio de TrackPlay.
 - Se encarga de:
   - Validar variables de entorno y secretos antes del arranque.
   - Configurar `logger` e internacionalización (`i18n`) de forma global.

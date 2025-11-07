@@ -1,15 +1,15 @@
 import { TrackPlayError, getSecrets, getServerEnv, BaseServerEnvSchema } from '@trackplay/core'
-import { createLogger, createI18n, initI18n } from '@trackplay/core'
+import { initWinston, createI18next, initI18next } from '@trackplay/core'
 import { getBaseUrl, getTranslationPath, translate } from '@trackplay/core'
 import type { i18n, Logger, InferConfig, ConfigSchema, BaseURLOptions } from '@trackplay/core'
 import express, { type Express } from 'express'
-import { applyMiddlewares } from '#middlewares/applyMiddlewares'
-import { createErrorHandler } from '#middlewares/createErrorHandler'
-import { createNotFoundHandler } from '#middlewares/createNotFoundHandler'
-import type { BuildContext } from '#types/container/BuildContext'
-import { type DependencyFactories } from '#types/container/DependencyFactories'
-import { type DependencyLayers } from '#types/container/DependencyLayers'
-import { type MiddlewareOptions } from '#types/middlewares/MiddlewareOptions'
+import { LanguageDetector } from 'i18next-http-middleware'
+import { applyHttpMiddlewares } from '#middlewares/http.middleware'
+import { createErrorHandler } from '#middlewares/error.middleware'
+import { createI18nMiddleware } from '#middlewares/i18next.middleware'
+import { createNotFoundHandler } from '#middlewares/notFound.middleware'
+import type { BuildContext, DependencyFactories, DependencyLayers } from '#types/container.type'
+import { type MiddlewareOptions } from '#types/middlewares.type'
 
 const path = getTranslationPath(import.meta.url)
 
@@ -87,7 +87,10 @@ const createHttpServer = <Controllers extends object>(options: HttpServerOptions
   const { routes, controllers, i18n, logger, middlewares = {} } = options
   const app = express()
 
-  applyMiddlewares(app, middlewares)
+  applyHttpMiddlewares(app, middlewares)
+
+  app.use(createI18nMiddleware(i18n))
+
   if (routes) routes(app, controllers)
 
   app.use(createNotFoundHandler())
@@ -139,9 +142,12 @@ export const bootstrap = async <
 ): Promise<ServiceRuntime<Layers, EnvValues<EnvConfig>, SecretValues<SecretConfig>>> => {
   const { serviceName, envSchema, secretSchema, container, routes, middlewareOptions } = options
 
-  const logger = createLogger({ label: serviceName })
-  const i18n = createI18n()
-  await initI18n(i18n)
+  const logger = initWinston({ label: serviceName })
+
+  const i18n = createI18next()
+  i18n.use(LanguageDetector)
+
+  await initI18next(i18n)
 
   try {
     const runtime = await prepareRuntime(envSchema, secretSchema)

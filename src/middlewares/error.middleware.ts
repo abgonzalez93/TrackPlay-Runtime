@@ -1,7 +1,7 @@
 import { HTTP_STATUS, LOGGER, TrackPlayError, getTranslationPath, translate } from '@trackplay/core'
 import type { i18n, Logger, LogLevel } from '@trackplay/core'
 import type { Request, Response } from 'express'
-import { type ErrorHandlerOptions } from '#types/middlewares/ErrorHandlerOptions'
+import { type ErrorHandlerOptions } from '#types/middlewares.type'
 
 const path = getTranslationPath(import.meta.url)
 

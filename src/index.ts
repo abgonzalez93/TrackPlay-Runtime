@@ -1,5 +1,5 @@
-import { registerRoute } from '#routes/registerRoute'
-import { bootstrap } from '#runtime/bootstrap'
+import { registerRoute } from '#routes/register.routes'
+import { bootstrap } from '#runtime/bootstrap.runtime'
 
 export const trackplay = Object.freeze({
   bootstrap,
@@ -10,11 +10,8 @@ export default trackplay
 
 export type { Request, Response, Express } from 'express'
 
-export { registerRoute } from '#routes/registerRoute'
-export { bootstrap } from '#runtime/bootstrap'
+export { registerRoute } from '#routes/register.routes'
+export { bootstrap } from '#runtime/bootstrap.runtime'
 
-export { type BuildContext } from '#types/container/BuildContext'
-export { type DependencyFactories } from '#types/container/DependencyFactories'
-export { type DependencyLayers } from '#types/container/DependencyLayers'
-export { type ErrorHandlerOptions } from '#types/middlewares/ErrorHandlerOptions'
-export { type MiddlewareOptions } from '#types/middlewares/MiddlewareOptions'
+export type { BuildContext, DependencyFactories, DependencyLayers } from '#types/container.type'
+export type { ErrorHandlerOptions, MiddlewareOptions } from '#types/middlewares.type'

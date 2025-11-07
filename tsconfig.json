@@ -6,6 +6,7 @@
     "module": "nodenext",
     "moduleResolution": "NodeNext",
     "types": ["node", "express", "cors", "compression"],
+    "typeRoots": ["./node_modules/@types", "./src/types"],
     "esModuleInterop": true,
     "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true,

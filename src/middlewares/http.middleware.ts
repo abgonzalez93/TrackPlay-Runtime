@@ -2,7 +2,7 @@ import compression from 'compression'
 import cors from 'cors'
 import { type Express, json, type RequestHandler } from 'express'
 import helmet from 'helmet'
-import { type MiddlewareOptions } from '#types/middlewares/MiddlewareOptions'
+import { type HttpMiddlewareOptions } from '#types/middlewares.type'
 
 const useIfEnabled = <Options>(
   app: Express,
@@ -16,7 +16,7 @@ const useIfEnabled = <Options>(
   handlers.forEach((h) => app.use(h))
 }
 
-export const applyMiddlewares = (app: Express, options: MiddlewareOptions = {}): void => {
+export const applyHttpMiddlewares = (app: Express, options: HttpMiddlewareOptions = {}): void => {
   const { helmet: helmetOpts = {}, cors: corsOpts = {}, enableCompression = true, enableJson = true } = options
 
   useIfEnabled(app, helmet, helmetOpts)
