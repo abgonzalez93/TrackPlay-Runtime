@@ -1,10 +1,17 @@
-import { t, getTranslationPath, NotFoundError } from '@trackplay/core'
-import type { Request, Response, NextFunction } from 'express'
+import { NotFoundError } from '@trackplay/core'
+import { type TrackPlayRequestHandler } from '#types/trackplay.type'
 
-const path = getTranslationPath(import.meta.url)
+export const createNotFoundMiddleware = (): TrackPlayRequestHandler => {
+  const notFoundMiddleware: TrackPlayRequestHandler = (req, _res, next): void => {
+    const safeUrl = encodeURI(req.originalUrl)
 
-export const createNotFoundHandler =
-  () =>
-  (req: Request, _res: Response, next: NextFunction): void => {
-    next(new NotFoundError(t(`${path}.route_not_found`, { url: req.originalUrl })))
+    next(
+      new NotFoundError({
+        i18nKey: 'core.errors.route_not_found',
+        i18nArgs: { url: safeUrl },
+      }),
+    )
   }
+
+  return notFoundMiddleware
+}

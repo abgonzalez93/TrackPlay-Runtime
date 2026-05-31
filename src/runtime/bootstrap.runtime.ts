@@ -1,188 +1,64 @@
-import { TrackPlayError, getSecrets, getServerEnv, BaseServerEnvSchema } from '@trackplay/core'
-import { initWinston, createI18next, initI18next } from '@trackplay/core'
-import { getBaseUrl, getTranslationPath, translate } from '@trackplay/core'
-import type { i18n, Logger, InferConfig, ConfigSchema, BaseURLOptions } from '@trackplay/core'
-import express, { type Express } from 'express'
-import { LanguageDetector } from 'i18next-http-middleware'
-import { applyHttpMiddlewares } from '#middlewares/http.middleware'
-import { createErrorHandler } from '#middlewares/error.middleware'
-import { createI18nMiddleware } from '#middlewares/i18next.middleware'
-import { createNotFoundHandler } from '#middlewares/notFound.middleware'
-import type { BuildContext, DependencyFactories, DependencyLayers } from '#types/container.type'
-import { type MiddlewareOptions } from '#types/middlewares.type'
+import { basename } from 'path'
+import { TrackPlayError, type ConfigSchema } from '@trackplay/core'
+import { createServerBuilder, type ServerBuilder, type RuntimeBuilder } from './builder.runtime.ts'
 
-const path = getTranslationPath(import.meta.url)
-
-export type SchemaOutput<T extends ConfigSchema | undefined> = T extends ConfigSchema
-  ? InferConfig<T>
-  : Record<string, never>
-
-type EnvValues<T extends ConfigSchema | undefined> = Readonly<InferConfig<typeof BaseServerEnvSchema> & SchemaOutput<T>>
-
-type SecretValues<T extends ConfigSchema | undefined> = Readonly<SchemaOutput<T>>
-
-interface RuntimeConfig<
-  EnvValues extends Record<string, unknown> = Record<string, never>,
-  SecretValues extends Record<string, unknown> = Record<string, never>,
+interface BootstrapOptions<
+  EnvConfig extends ConfigSchema,
+  SecretConfig extends ConfigSchema,
+  Infra extends object,
+  App extends object,
+  Interface extends object,
 > {
-  env: EnvValues
-  secrets: SecretValues
-  isDevelopment: boolean
-  corsOrigins: string[]
-  serverOptions: BaseURLOptions
+  configure: (builder: ServerBuilder) => RuntimeBuilder<EnvConfig, SecretConfig, Infra, App, Interface>
 }
 
-const prepareRuntime = async <EnvConfig extends ConfigSchema | undefined, SecretConfig extends ConfigSchema | undefined>(
-  envSchema?: EnvConfig,
-  secretSchema?: SecretConfig,
-): Promise<RuntimeConfig<EnvValues<EnvConfig>, SecretValues<SecretConfig>>> => {
-  const mixedEnvSchema = envSchema ? BaseServerEnvSchema.extend(envSchema.shape) : BaseServerEnvSchema
-  const env = getServerEnv(mixedEnvSchema) as EnvValues<EnvConfig>
-  const secrets = (secretSchema ? getSecrets(secretSchema) : {}) as SecretValues<SecretConfig>
+const handleFatalError = (error: unknown): never => {
+  if (error instanceof TrackPlayError) {
+    console.error('Fatal TrackPlay Error')
+    console.error(`Code: ${error.code}`)
+    console.error(`Title: ${error.title}`)
+    console.error(`Message: ${error.message}`)
 
-  const isDevelopment = env.NODE_ENV === 'development'
+    if (error.errors) {
+      console.error('Errors:')
 
-  const serverOptions: BaseURLOptions = {
-    protocol: isDevelopment ? 'http' : 'https',
-    host: env.HOST,
-    port: env.PORT,
+      if (Array.isArray(error.errors)) {
+        error.errors.forEach((err) => console.error(err))
+      } else {
+        console.error(error.errors)
+      }
+    }
+  } else if (error instanceof Error) {
+    const name = error.name.replace(/^\[|\]$/g, '')
+    console.error('Fatal System Error')
+    console.error(`Type: ${name}`)
+    console.error(`Message: ${error.message}`)
+    if (error.stack) console.error(`Stack: ${error.stack}`)
+  } else {
+    console.error('Fatal Unknown Error')
+    console.error('Details:', error)
   }
 
-  const corsOrigins = env.CORS_ORIGINS.split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean)
-
-  return { env, secrets, isDevelopment, corsOrigins, serverOptions }
-}
-
-const buildDependencies = <
-  Layers extends DependencyLayers,
-  EnvValues extends Record<string, unknown> = Record<string, never>,
-  SecretValues extends Record<string, unknown> = Record<string, never>,
->(
-  factories: DependencyFactories<Layers, EnvValues, SecretValues>,
-  ctx: BuildContext<EnvValues, SecretValues>,
-): Layers => {
-  const adapters = factories.adapters(ctx)
-  const services = factories.services({ adapters })
-  const useCases = factories.useCases({ services })
-  const controllers = factories.controllers({ useCases })
-  return { adapters, services, useCases, controllers } as Layers
-}
-
-interface HttpServerOptions<Controllers extends object> {
-  routes?: (app: Express, controllers: Controllers) => void
-  controllers: Controllers
-  i18n: i18n
-  logger: Logger
-  middlewares?: Partial<MiddlewareOptions>
-}
-
-interface HttpServerInstance {
-  app: Express
-  start: (serverOptions: BaseURLOptions) => void
-}
-
-const createHttpServer = <Controllers extends object>(options: HttpServerOptions<Controllers>): HttpServerInstance => {
-  const { routes, controllers, i18n, logger, middlewares = {} } = options
-  const app = express()
-
-  applyHttpMiddlewares(app, middlewares)
-
-  app.use(createI18nMiddleware(i18n))
-
-  if (routes) routes(app, controllers)
-
-  app.use(createNotFoundHandler())
-  app.use(createErrorHandler(i18n, logger, middlewares.errorHandler))
-
-  const start = (serverOptions: BaseURLOptions): void => {
-    app.listen(serverOptions.port, serverOptions.host, () =>
-      logger.info(`✅ Server running at ${getBaseUrl(serverOptions)}`),
-    )
-  }
-
-  return { app, start }
-}
-
-export interface BootstrapConfig<
-  Layers extends DependencyLayers,
-  EnvConfig extends ConfigSchema | undefined = undefined,
-  SecretConfig extends ConfigSchema | undefined = undefined,
-> {
-  serviceName: string
-  container: DependencyFactories<Layers, EnvValues<EnvConfig>, SecretValues<SecretConfig>>
-  routes: (app: Express, controllers: Layers['controllers']) => void
-  envSchema?: EnvConfig
-  secretSchema?: SecretConfig
-  middlewareOptions?: MiddlewareOptions
-}
-
-export interface ServiceRuntime<
-  Layers extends DependencyLayers,
-  EnvValues extends Record<string, unknown> = Record<string, never>,
-  SecretValues extends Record<string, unknown> = Record<string, never>,
-> {
-  app: Express
-  start: () => void
-  logger: Logger
-  i18n: i18n
-  env: EnvValues
-  secrets: SecretValues
-  container: Layers
-  isDevelopment: boolean
+  process.exit(1)
 }
 
 export const bootstrap = async <
-  Layers extends DependencyLayers,
-  EnvConfig extends ConfigSchema | undefined = undefined,
-  SecretConfig extends ConfigSchema | undefined = undefined,
+  EnvConfig extends ConfigSchema,
+  SecretConfig extends ConfigSchema,
+  Infra extends object,
+  App extends object,
+  Interface extends object,
 >(
-  options: BootstrapConfig<Layers, EnvConfig, SecretConfig>,
-): Promise<ServiceRuntime<Layers, EnvValues<EnvConfig>, SecretValues<SecretConfig>>> => {
-  const { serviceName, envSchema, secretSchema, container, routes, middlewareOptions } = options
-
-  const logger = initWinston({ label: serviceName })
-
-  const i18n = createI18next()
-  i18n.use(LanguageDetector)
-
-  await initI18next(i18n)
-
+  options: BootstrapOptions<EnvConfig, SecretConfig, Infra, App, Interface>,
+  builderFactory: (name: string) => ServerBuilder = createServerBuilder,
+): Promise<void> => {
   try {
-    const runtime = await prepareRuntime(envSchema, secretSchema)
-
-    const builtContainer = buildDependencies(container, {
-      env: runtime.env,
-      secrets: runtime.secrets,
-    })
-
-    const { app, start } = createHttpServer({
-      routes,
-      controllers: builtContainer.controllers,
-      i18n,
-      logger,
-      middlewares: {
-        cors: { origin: runtime.corsOrigins, credentials: true },
-        errorHandler: { isDevelopment: runtime.isDevelopment },
-        ...middlewareOptions,
-      },
-    })
-
-    return {
-      app,
-      start: () => start(runtime.serverOptions),
-      logger,
-      i18n,
-      env: runtime.env,
-      secrets: runtime.secrets,
-      container: builtContainer,
-      isDevelopment: runtime.isDevelopment,
-    }
-  } catch (error: unknown) {
-    const messageKey = error instanceof TrackPlayError ? (error.i18n ?? error.message) : `${path}.bootstrap_failed`
-    const message = translate(i18n, logger, messageKey)
-    logger.error(`💥 [${serviceName}] ${message}`, { error })
-    process.exit(1)
+    const serviceName = basename(process.cwd())
+    const builder = builderFactory(serviceName)
+    const configuredBuilder = options.configure(builder)
+    const runtime = await configuredBuilder.build()
+    runtime.start()
+  } catch (error) {
+    handleFatalError(error)
   }
 }

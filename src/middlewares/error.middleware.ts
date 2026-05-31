@@ -1,105 +1,82 @@
-import { HTTP_STATUS, LOGGER, TrackPlayError, getTranslationPath, translate } from '@trackplay/core'
-import type { i18n, Logger, LogLevel } from '@trackplay/core'
-import type { Request, Response } from 'express'
-import { type ErrorHandlerOptions } from '#types/middlewares.type'
-
-const path = getTranslationPath(import.meta.url)
+import { HTTP_STATUS, TrackPlayError, translateErrorMessage } from '@trackplay/core'
+import type { i18n, TFunction } from '@trackplay/core'
+import { CONTEXT_KEYS } from '#constants/keys.constant'
+import type { ErrorBody, ErrorHandlerOptions } from '#types/middlewares.type'
+import { type TrackPlayErrorRequestHandler } from '#types/trackplay.type'
 
 interface ErrorMetadata {
-  statusCode: number
-  name: string
-  isTrackPlayError: boolean
+  status: number
+  title: string
+  code: string
 }
 
 const resolveErrorMetadata = (error: unknown): ErrorMetadata => {
-  if (error instanceof TrackPlayError) return { statusCode: error.statusCode, name: error.name, isTrackPlayError: true }
+  if (error instanceof TrackPlayError) return { status: error.status, title: error.title, code: error.code }
   return {
-    statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-    name: 'Error',
-    isTrackPlayError: false,
+    status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+    title: 'Internal Server Error',
+    code: 'INTERNAL_SERVER_ERROR',
   }
 }
 
-const resolveErrorMessage = (i18n: i18n, logger: Logger, error: unknown): string => {
-  const fallbackKey = `${path}.unexpected_error`
-  if (error instanceof TrackPlayError) return translate(i18n, logger, error.i18n ?? error.message, fallbackKey)
-  return translate(i18n, logger, fallbackKey)
-}
-
-interface ErrorBody {
-  error: string
-  message: string
-  stack?: string
-  details?: unknown
-}
-
-const buildErrorBody = (i18n: i18n, logger: Logger, error: unknown, isDevelopment: boolean, name: string): ErrorBody => {
-  const message = resolveErrorMessage(i18n, logger, error)
-  const body: ErrorBody = { error: name, message }
-
-  if (isDevelopment) {
-    if (error instanceof Error && error.stack) body.stack = error.stack.replace(/\s+/g, ' ')
-    if (error instanceof TrackPlayError && error.details) body.details = error.details
-  }
-
-  return body
+interface ErrorContext {
+  i18n: i18n
+  isDevelopment: boolean
 }
 
 interface ErrorResponse {
-  statusCode: number
-  response: ErrorBody
+  status: number
+  body: ErrorBody
 }
 
-const buildErrorResponse = (i18n: i18n, logger: Logger, error: unknown, isDevelopment: boolean): ErrorResponse => {
-  const { statusCode, name } = resolveErrorMetadata(error)
-  const response = buildErrorBody(i18n, logger, error, isDevelopment, name)
-  return { statusCode, response }
-}
+const buildErrorResponse = (ctx: ErrorContext, t: TFunction, error: unknown, path: string): ErrorResponse => {
+  const { status, title, code } = resolveErrorMetadata(error)
+  const message = translateErrorMessage(t, error)
+  const errorSlug = code.toLowerCase()
 
-interface LogHttpErrorOptions extends Pick<ErrorResponse, 'statusCode' | 'response'> {
-  error?: unknown
-  isDevelopment?: boolean
-}
+  const body: ErrorBody = {
+    type: `https://docs.trackplay.com/errors/${errorSlug}`,
+    title,
+    status,
+    message,
+    instance: path,
+    code,
+  }
 
-const logHttpError = (
-  logger: Logger,
-  { statusCode, response, error, isDevelopment = false }: LogHttpErrorOptions,
-): void => {
-  let level: LogLevel | null = null
+  if (error instanceof TrackPlayError) {
+    const exposeClientContext = ctx.isDevelopment || error.status < 500
+    if (exposeClientContext && error.errors) body.errors = error.errors
+  }
 
-  if (statusCode >= HTTP_STATUS.INTERNAL_SERVER_ERROR) {
-    level = 'error'
-  } else if (statusCode >= HTTP_STATUS.BAD_REQUEST) {
-    switch (statusCode) {
-      case HTTP_STATUS.UNAUTHORIZED:
-      case HTTP_STATUS.FORBIDDEN:
-        level = 'warn'
-        break
-      case HTTP_STATUS.BAD_REQUEST:
-      case HTTP_STATUS.NOT_FOUND:
-      default:
-        level = isDevelopment ? 'info' : null
-        break
+  if (ctx.isDevelopment) {
+    if (error instanceof Error && error.stack) {
+      body.stack = error.stack.split('\n').map((line) => line.trim())
     }
   }
 
-  if (!level) return
-
-  logger[level](`${LOGGER.EMOJIS[level]} [${response.error}] ${response.message}`, {
-    statusCode,
-    ...(level === 'error' ? { error } : undefined),
-  })
+  return { status, body }
 }
 
-export const createErrorHandler =
-  (i18n: i18n, logger: Logger, options: ErrorHandlerOptions = {}) =>
-  (error: unknown, _req: Request, res: Response): void => {
-    if (res.headersSent) return
+export const createErrorMiddleware = (i18n: i18n, options: ErrorHandlerOptions = {}): TrackPlayErrorRequestHandler => {
+  const isDevelopment = options.isDevelopment ?? false
+  const context: ErrorContext = { i18n, isDevelopment }
 
-    const { isDevelopment = false } = options
-    const { statusCode, response } = buildErrorResponse(i18n, logger, error, isDevelopment)
+  const errorMiddleware: TrackPlayErrorRequestHandler = (error, req, res, next): void => {
+    if (res.headersSent) return next(error)
 
-    logHttpError(logger, { statusCode, response, error, isDevelopment })
+    const t = req.t ?? context.i18n.t.bind(context.i18n)
+    const { status, body } = buildErrorResponse(context, t, error, req.originalUrl)
 
-    res.status(statusCode).json(response)
+    res.locals[CONTEXT_KEYS.ERROR] = {
+      status,
+      body,
+      error,
+      isDevelopment,
+    }
+
+    res.header('Content-Type', 'application/problem+json')
+    res.status(status).json(body)
   }
+
+  return errorMiddleware
+}

@@ -13,7 +13,7 @@ El paquete incluye:
 ### ✅ Middlewares
 
 - Middlewares genéricos para Express:
-  - `http.middleware.ts`: aplica múltiples middlewares de forma declarativa..
+  - `http.middleware.ts`: aplica múltiples middlewares de forma declarativa.
   - `error.middleware.ts`: gestiona errores de forma centralizada y traducible.
   - `notFound.middleware.ts`: maneja rutas inexistentes con respuestas estandarizadas.
 - Totalmente configurables mediante las opciones tipadas de `MiddlewareOptions`.
@@ -37,8 +37,8 @@ El paquete incluye:
 
 ### ✅ Types
 
-- Tipos e interfaces globales compartidos:
-- `ErrorHandlerOptions`, `MiddlewareOptions`, `DependencyFactories`, `DependencyLayers`, `EnvSecretsBundle`, etc.
+- Tipos e interfaces globales compartidos.
+- `ErrorHandlerOptions`, `MiddlewareOptions`, `DependencyFactories`, `DependencyLayers`, `BuildContext`, etc.
 - Mantiene la **consistencia tipada** y reduce la duplicación entre los distintos microservicios y librerías de TrackPlay.
 
 ---
@@ -54,7 +54,7 @@ Modifica el campo `version` en `package.json` siguiendo [semver](https://semver.
 ```json
 {
   "name": "@trackplay/runtime",
-  "version": "1.2.0"
+  "version": "x.y.z"
 }
 ```
 
@@ -64,7 +64,7 @@ Asegúrate de guardar y subir los cambios a Git:
 
 ```bash
 git add .
-git commit -m "chore: bump version to 1.2.0"
+git commit -m "chore: bump version to x.y.z"
 git push origin develop
 ```
 
@@ -77,7 +77,13 @@ pnpm run build
 pnpm pack
 ```
 
-Esto generará un archivo como: `trackplay-runtime-1.2.0.tgz`
+Alternativa recomendada: usar el script de release del paquete:
+
+```bash
+pnpm run release
+```
+
+Esto generará un archivo como: `trackplay-runtime-x.y.z.tgz`
 
 ### 4. 🚀 Publicar en el registry
 
@@ -86,8 +92,8 @@ Para publicar en el registro de NPM (por ejemplo, GitHub Packages), necesitas te
 ✅ .npmrc mínimo para GitHub Packages:
 
 ```ini
-@YOUR_DIRECTORY:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
+@trackplay:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
 🔐 El authToken debe tener permisos de publicación (write:packages).

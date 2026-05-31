@@ -1,17 +1,16 @@
-import { registerRoute } from '#routes/register.routes'
-import { bootstrap } from '#runtime/bootstrap.runtime'
+export type {
+  TrackPlayRequestHandler,
+  TrackPlayErrorRequestHandler,
+  TrackPlayRequest,
+  TrackPlayResponse,
+  TrackPlayNextFunction,
+  TrackPlayExpress,
+  TrackPlayRouter,
+  TrackPlayRequestHandlerParams,
+  TrackPlayRouterOptions,
+} from '#types/trackplay.type'
 
-export const trackplay = Object.freeze({
-  bootstrap,
-  registerRoute,
-})
-
-export default trackplay
-
-export type { Request, Response, Express } from 'express'
-
-export { registerRoute } from '#routes/register.routes'
+export { registerRoute } from '#routes/register.route'
 export { bootstrap } from '#runtime/bootstrap.runtime'
-
-export type { BuildContext, DependencyFactories, DependencyLayers } from '#types/container.type'
-export type { ErrorHandlerOptions, MiddlewareOptions } from '#types/middlewares.type'
+export { type ServerBuilder } from '#runtime/builder.runtime'
+export type { ContainerFactory, BaseInfrastructureLayer } from '#types/container.type'

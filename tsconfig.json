@@ -1,26 +1,23 @@
 {
+  "include": ["src/**/*"],
   "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "target": "esnext",
-    "module": "nodenext",
-    "moduleResolution": "NodeNext",
-    "types": ["node", "express", "cors", "compression"],
-    "typeRoots": ["./node_modules/@types", "./src/types"],
-    "esModuleInterop": true,
-    "rewriteRelativeImportExtensions": true,
-    "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "target": "ESNext",
+    "module": "NodeNext",
     "skipLibCheck": true,
+    "noUncheckedSideEffectImports": true,
+    "resolveJsonModule": true,
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
-  },
-  "include": ["src"],
-  "exclude": ["node_modules"]
+    "customConditions": ["development"]
+  }
 }
